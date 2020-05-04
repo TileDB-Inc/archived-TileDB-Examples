@@ -1,0 +1,34 @@
+trigger:
+  tags:
+    include:
+      - v*
+  branches:
+    include:
+    - master
+
+
+# test and upload my code as an artifact named WebSite
+jobs:
+- job: Build
+  strategy:
+    matrix:
+      linux_py37:
+        imageName: 'ubuntu-16.04'
+        python.version: '3.7'
+  pool:
+    vmImage: $(imageName)
+
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '$(python.version)'
+      architecture: 'x64'
+
+  - script: python -m pip install --upgrade nbconvert
+    displayName: 'Install dependencies'
+
+
+    # Convert the notebooks to html to make sure they are valid files
+  - script: find . -iname "*.ipynb" -exec jupyter nbconvert {} --to html \;
+    displayName: 'Test validity of notebook files'
+    condition: ne(variables['Agent.OS'], 'Windows_NT')
