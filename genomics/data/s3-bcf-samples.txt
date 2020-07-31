@@ -1,0 +1,7 @@
+s3://tiledb-inc-demo-data/examples/notebooks/vcfs/G4.bcf
+s3://tiledb-inc-demo-data/examples/notebooks/vcfs/G5.bcf
+s3://tiledb-inc-demo-data/examples/notebooks/vcfs/G6.bcf
+s3://tiledb-inc-demo-data/examples/notebooks/vcfs/G7.bcf
+s3://tiledb-inc-demo-data/examples/notebooks/vcfs/G8.bcf
+s3://tiledb-inc-demo-data/examples/notebooks/vcfs/G9.bcf
+s3://tiledb-inc-demo-data/examples/notebooks/vcfs/G10.bcf
