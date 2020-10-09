@@ -18,3 +18,11 @@ TileDB-VCF, one of the genomic tools TileDB, Inc. has developed.
 The [quickstart-delayed](Quickstart-Delayed.ipynb) notebook has an overview
 of TileDB Cloud's delayed and tak graph APIs. This will walk you through performing
 user defined functions, severless sql and task graphs.
+
+## Geospatial SAR
+
+There are a number of SAR example notebooks under [geo/sar](geo/sar). 
+
+## Genomics
+
+We have multiple example of using TileDB-VCF under [genomics](genomics).
