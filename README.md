@@ -26,3 +26,6 @@ There are a number of SAR example notebooks under [geo/sar](geo/sar).
 ## Genomics
 
 We have multiple example of using TileDB-VCF under [genomics](genomics).
+
+## Machine Learning
+We have an example of using TileDB in order to train an image classification model with Tensorflow and Keras under [machine_learning/image_classification_tf_keras](machine_learning/image_classification_tf_keras).
