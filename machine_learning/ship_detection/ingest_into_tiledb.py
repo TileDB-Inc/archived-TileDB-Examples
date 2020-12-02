@@ -11,7 +11,7 @@ s3_file = 'airbus_ship_detection/train_ship_segmentations_v2.csv'
 to_be_downloaded_file = 'train_ship_segmentations_v2.csv'
 
 print('Downloading training segments csv...')
-#s3.download_file(bucket, s3_file, to_be_downloaded_file)
+s3.download_file(bucket, s3_file, to_be_downloaded_file)
 
 print('Loading training segments csv to df...')
 df = pd.read_csv(to_be_downloaded_file, header=None)
