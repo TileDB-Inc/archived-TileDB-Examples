@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import tiledb
 import cv2
+import time
 
 s3 = boto3.client('s3')
 
@@ -59,7 +60,10 @@ with tiledb.open(array, 'w', ctx=ctx) as train_images_tiledb:
         print('Inserting chunk ' + str(counter) + ' of ' + str(number_of_chunks))
         image_chunk = np.stack(image_chunk, axis=0)
         view = image_chunk.view([("", np.float32), ("", np.float32), ("", np.float32)])
+        start = time.time()
         train_images_tiledb[tpl[0]:tpl[1], :, :] = view
+        life_taken = time.time() - start
+        print('Insertion took ' + str(life_taken) + 'seconds.')
         counter += 1
         del image_chunk
 
