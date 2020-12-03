@@ -5,6 +5,8 @@ import tiledb
 
 s3 = boto3.client('s3')
 
+BATCH_SIZE = 128
+
 bucket = 'tiledb-gskoumas'
 prefix = 'airbus_ship_detection/train_v2'
 s3_file = 'airbus_ship_detection/train_ship_segmentations_v2.csv'
@@ -34,7 +36,7 @@ print('Creating TileDB array for training segments...')
 ctx = tiledb.Ctx()
 
 dom = tiledb.Domain(
-        tiledb.Dim(name="image_id", domain=(0, train_ship_segments.shape[0] - 1), tile=1024, dtype=np.int32),
+        tiledb.Dim(name="image_id", domain=(0, train_ship_segments.shape[0] - 1), tile=BATCH_SIZE, dtype=np.int32),
         ctx=ctx,
     )
 

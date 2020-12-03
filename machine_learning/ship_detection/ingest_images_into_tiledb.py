@@ -8,7 +8,7 @@ s3 = boto3.client('s3')
 
 bucket = 'tiledb-gskoumas'
 prefix = 'airbus_ship_detection/train_v2'
-BATCH_SIZE = 2048
+BATCH_SIZE = 128
 
 
 def chunks(lst, n=BATCH_SIZE):
@@ -60,6 +60,7 @@ with tiledb.open(array, 'w', ctx=ctx) as train_images_tiledb:
         image_chunk = np.stack(image_chunk, axis=0)
         view = image_chunk.view([("", np.float32), ("", np.float32), ("", np.float32)])
         train_images_tiledb[tpl[0]:tpl[1], :, :] = view
+        counter += 1
         del image_chunk
 
 print('done')
