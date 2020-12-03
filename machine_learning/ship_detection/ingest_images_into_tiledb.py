@@ -8,9 +8,10 @@ s3 = boto3.client('s3')
 
 bucket = 'tiledb-gskoumas'
 prefix = 'airbus_ship_detection/train_v2'
-BATCH_SIZE = 1024
+BATCH_SIZE = 2048
 
-def chunks(lst, n=1024):
+
+def chunks(lst, n=BATCH_SIZE):
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n], (i, i + n)
@@ -43,12 +44,12 @@ tiledb.Array.create(array, schema)
 
 image_chunks = chunks(image_ids)
 
-number_of_chunks = len(image_ids) // 10000
+number_of_chunks = len(image_ids) // BATCH_SIZE
 
 with tiledb.open(array, 'w') as train_images_tiledb:
     counter = 1
     for chunk, tpl in image_chunks:
-        print('Working on chunk ' + str(counter) + 'of' + str(number_of_chunks))
+        print('Working on chunk ' + str(counter) + ' of ' + str(number_of_chunks))
         image_chunk = []
         for image_id in chunk:
             image_path = 'train_v2/' + image_id
@@ -56,8 +57,9 @@ with tiledb.open(array, 'w') as train_images_tiledb:
 
             image_chunk.append(image.astype(np.float32))
 
-        print('Inserting chunk ' + str(counter) + 'of' + str(number_of_chunks))
-        train_images_tiledb[tpl[0]:tpl[1]] = np.stack(image_chunk, axis=0).view([("", np.float32), ("", np.float32), ("", np.float32)])
+        print('Inserting chunk ' + str(counter) + ' of ' + str(number_of_chunks))
+        image_chunk = np.stack(image_chunk, axis=0)
+        train_images_tiledb[tpl[0]:tpl[1]] = image_chunk.view([("", np.float32), ("", np.float32), ("", np.float32)])
         del image_chunk
 
 print('done')
