@@ -36,7 +36,7 @@ dom = tiledb.Domain(
     )
 
 attrs = [
-        tiledb.Attr(name="rgb", dtype=[("", np.float32), ("", np.float32), ("", np.float32)], var=False,
+        tiledb.Attr(name="rgb", dtype=[("", np.int8), ("", np.int8), ("", np.int8)], var=False,
                     filters=tiledb.FilterList([tiledb.GzipFilter(-1, ctx=ctx)], ctx=ctx), ctx=ctx),
     ]
 
@@ -64,11 +64,11 @@ with tiledb.open(array, 'w', ctx=ctx) as train_images_tiledb:
         for image_id in chunk:
             image_path = 'train_v2/' + image_id
             image = cv2.imread(image_path)
-            image_chunk.append(image.astype(np.float32))
+            image_chunk.append(image.astype(np.int8))
 
         print('Inserting chunk ' + str(counter) + ' of ' + str(number_of_chunks))
         image_chunk = np.stack(image_chunk, axis=0)
-        view = image_chunk.view([("", np.float32), ("", np.float32), ("", np.float32)])
+        view = image_chunk.view([("", np.int8), ("", np.int8), ("", np.int8)])
         start = time.time()
         train_images_tiledb[tpl[0]:tpl[1], :, :] = view
         life_taken = time.time() - start
