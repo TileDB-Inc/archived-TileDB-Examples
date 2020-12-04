@@ -9,7 +9,7 @@ s3 = boto3.client('s3')
 
 bucket = 'tiledb-gskoumas'
 prefix = 'airbus_ship_detection/train_v2'
-BATCH_SIZE = 128
+BATCH_SIZE = 32
 
 
 def chunks(lst, n=BATCH_SIZE):
@@ -24,6 +24,8 @@ df = pd.read_csv('train_ship_segmentations_v2.csv', header=None)
 image_ids = df[0][1:].to_list()
 
 print('Creating TileDB array for training segments...')
+tiledb.stats_enable()
+
 ctx = tiledb.Ctx()
 
 dom = tiledb.Domain(
@@ -37,7 +39,13 @@ attrs = [
         tiledb.Attr(name="rgb", dtype=[("", np.float32), ("", np.float32), ("", np.float32)], var=False, ctx=ctx),
     ]
 
-schema = tiledb.ArraySchema(domain=dom, sparse=False, attrs=attrs, ctx=ctx)
+schema = tiledb.ArraySchema(domain=dom,
+                            sparse=False,
+                            attrs=attrs,
+                            cell_order='row-major',
+                            tile_order='row-major',
+                            capacity=10000,
+                            ctx=ctx)
 
 array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/train_ship_images"
 

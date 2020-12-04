@@ -5,7 +5,7 @@ import tiledb
 
 s3 = boto3.client('s3')
 
-BATCH_SIZE = 128
+BATCH_SIZE = 32
 
 bucket = 'tiledb-gskoumas'
 prefix = 'airbus_ship_detection/train_v2'
