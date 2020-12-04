@@ -40,11 +40,16 @@ attrs = [
                     filters=tiledb.FilterList([tiledb.ZstdFilter(10, ctx=ctx)], ctx=ctx), ctx=ctx),
     ]
 
+coords_filters = tiledb.FilterList([tiledb.ZstdFilter(4, ctx=ctx)], ctx=ctx)
+offsets_filters = tiledb.FilterList([tiledb.LZ4Filter(5, ctx=ctx)], ctx=ctx)
+
 schema = tiledb.ArraySchema(domain=dom,
                             sparse=False,
                             attrs=attrs,
                             cell_order='row-major',
                             tile_order='row-major',
+                            coords_filters=coords_filters,
+                            offsets_filters=offsets_filters,
                             capacity=10000,
                             ctx=ctx)
 
