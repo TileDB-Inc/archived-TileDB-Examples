@@ -37,7 +37,7 @@ dom = tiledb.Domain(
 
 attrs = [
         tiledb.Attr(name="rgb", dtype=[("", np.uint8), ("", np.uint8), ("", np.uint8)], var=False,
-                    filters=tiledb.FilterList([tiledb.GzipFilter(-1, ctx=ctx)], ctx=ctx), ctx=ctx),
+                    filters=tiledb.FilterList([tiledb.ZstdFilter(level=6, ctx=ctx)], ctx=ctx), ctx=ctx),
     ]
 
 schema = tiledb.ArraySchema(domain=dom,
@@ -70,7 +70,7 @@ with tiledb.open(array, 'w', ctx=ctx) as train_images_tiledb:
         image_chunk = np.stack(image_chunk, axis=0)
         view = image_chunk.view([("", np.uint8), ("", np.uint8), ("", np.uint8)])
         start = time.time()
-        train_images_tiledb[tpl[0]:tpl[1], :, :] = view
+        train_images_tiledb[tpl[0]:tpl[1]] = view
         life_taken = time.time() - start
         print('Insertion took ' + str(life_taken) + 'seconds.')
         counter += 1
