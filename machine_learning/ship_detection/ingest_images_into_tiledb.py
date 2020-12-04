@@ -36,7 +36,8 @@ dom = tiledb.Domain(
     )
 
 attrs = [
-        tiledb.Attr(name="rgb", dtype=[("", np.float32), ("", np.float32), ("", np.float32)], var=False, ctx=ctx),
+        tiledb.Attr(name="rgb", dtype=[("", np.float32), ("", np.float32), ("", np.float32)], var=False,
+                    filters=tiledb.FilterList([tiledb.ZstdFilter(10, ctx=ctx)], ctx=ctx), ctx=ctx),
     ]
 
 schema = tiledb.ArraySchema(domain=dom,
@@ -45,7 +46,6 @@ schema = tiledb.ArraySchema(domain=dom,
                             cell_order='row-major',
                             tile_order='row-major',
                             capacity=10000,
-                            coords_filters=tiledb.FilterList([tiledb.ZstdFilter(), ]),
                             ctx=ctx)
 
 array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/train_ship_images"
