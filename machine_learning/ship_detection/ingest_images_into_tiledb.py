@@ -45,6 +45,7 @@ schema = tiledb.ArraySchema(domain=dom,
                             cell_order='row-major',
                             tile_order='row-major',
                             capacity=10000,
+                            coords_filters=tiledb.FilterList([tiledb.ZstdFilter(), ]),
                             ctx=ctx)
 
 array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/train_ship_images"
