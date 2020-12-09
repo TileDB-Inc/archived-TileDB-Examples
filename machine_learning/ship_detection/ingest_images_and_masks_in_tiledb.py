@@ -1,8 +1,9 @@
 import tiledb
 import pandas as pd
 import numpy as np
-import os
+import cv2
 import boto3
+import time
 
 s3 = boto3.client('s3')
 
@@ -106,3 +107,107 @@ with tiledb.open(array, 'w', ctx=ctx) as array:
     array[:] = data_dict
 
 print('Done with segments!')
+
+
+print('Ingestion of training images...')
+
+dom_image_train = tiledb.Domain(
+    tiledb.Dim(name="image_id", domain=(0, len(train_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
+    tiledb.Dim(name="x_axis", domain=(0, 768 - 1), tile=768, dtype=np.int32),
+    tiledb.Dim(name="y_axis", domain=(0, 768 - 1), tile=768, dtype=np.int32),
+    ctx=ctx,
+)
+
+attrs = [
+        tiledb.Attr(name="rgb", dtype=[("", np.uint8), ("", np.uint8), ("", np.uint8)], var=False,
+                    filters=tiledb.FilterList([tiledb.ZstdFilter(level=6, ctx=ctx)], ctx=ctx), ctx=ctx),
+    ]
+
+schema = tiledb.ArraySchema(domain=dom_image_train,
+                            sparse=False,
+                            attrs=attrs,
+                            cell_order='row-major',
+                            tile_order='row-major',
+                            capacity=10000,
+                            ctx=ctx)
+
+array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/train_ship_images"
+
+tiledb.Array.create(array, schema)
+
+image_chunks = chunks(train_df['ImageId'].tolist())
+
+number_of_chunks = len(train_df['ImageId'].tolist()) // BATCH_SIZE
+
+with tiledb.open(array, 'w', ctx=ctx) as train_images_tiledb:
+    counter = 1
+    for chunk, tpl in image_chunks:
+        print('Working on chunk ' + str(counter) + ' of ' + str(number_of_chunks))
+        image_chunk = []
+        for image_id in chunk:
+            image_path = 'train_v2/' + image_id
+            image = cv2.imread(image_path)
+            image_chunk.append(image.astype(np.uint8))
+
+        print('Inserting chunk ' + str(counter) + ' of ' + str(number_of_chunks))
+        image_chunk = np.stack(image_chunk, axis=0)
+        view = image_chunk.view([("", np.uint8), ("", np.uint8), ("", np.uint8)])
+        start = time.time()
+        train_images_tiledb[tpl[0]:tpl[1]] = view
+        life_taken = time.time() - start
+        print('Insertion took ' + str(life_taken) + 'seconds.')
+        counter += 1
+        del image_chunk
+
+
+print('Ingestion of validation images...')
+
+dom_image_val = tiledb.Domain(
+    tiledb.Dim(name="image_id", domain=(0, len(val_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
+    tiledb.Dim(name="x_axis", domain=(0, 768 - 1), tile=768, dtype=np.int32),
+    tiledb.Dim(name="y_axis", domain=(0, 768 - 1), tile=768, dtype=np.int32),
+    ctx=ctx,
+)
+
+attrs = [
+        tiledb.Attr(name="rgb", dtype=[("", np.uint8), ("", np.uint8), ("", np.uint8)], var=False,
+                    filters=tiledb.FilterList([tiledb.ZstdFilter(level=6, ctx=ctx)], ctx=ctx), ctx=ctx),
+    ]
+
+schema = tiledb.ArraySchema(domain=dom_image_val,
+                            sparse=False,
+                            attrs=attrs,
+                            cell_order='row-major',
+                            tile_order='row-major',
+                            capacity=10000,
+                            ctx=ctx)
+
+array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/val_ship_images"
+
+tiledb.Array.create(array, schema)
+
+image_chunks = chunks(val_df['ImageId'].tolist())
+
+number_of_chunks = len(val_df['ImageId'].tolist()) // BATCH_SIZE
+
+with tiledb.open(array, 'w', ctx=ctx) as train_images_tiledb:
+    counter = 1
+    for chunk, tpl in image_chunks:
+        print('Working on chunk ' + str(counter) + ' of ' + str(number_of_chunks))
+        image_chunk = []
+        for image_id in chunk:
+            image_path = 'train_v2/' + image_id
+            image = cv2.imread(image_path)
+            image_chunk.append(image.astype(np.uint8))
+
+        print('Inserting chunk ' + str(counter) + ' of ' + str(number_of_chunks))
+        image_chunk = np.stack(image_chunk, axis=0)
+        view = image_chunk.view([("", np.uint8), ("", np.uint8), ("", np.uint8)])
+        start = time.time()
+        train_images_tiledb[tpl[0]:tpl[1]] = view
+        life_taken = time.time() - start
+        print('Insertion took ' + str(life_taken) + 'seconds.')
+        counter += 1
+        del image_chunk
+
+print('Done with image ingestion!')
