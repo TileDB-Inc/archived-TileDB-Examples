@@ -40,13 +40,19 @@ df = df.drop('has_ship', axis=1)
 df = df.replace(np.nan, '', regex=True)
 
 # Group by image ids, as some images contain more than one masks
-print("Grouping by image id...")
-df = df.groupby('ImageId')['EncodedPixels'].apply(np.array)
+# print("Grouping by image id...")
+# df = df.groupby('ImageId')['EncodedPixels'].apply(np.array)
+
+# Strings to numpy of strings
+df = df['EncodedPixels'].apply(np.array)
 
 df = pd.DataFrame(df).reset_index()
 df.columns = ['ImageId', 'EncodedPixels']
 
-# # Split in train and validation
+# Shuffle dataframe
+df = df.sample(frac=1)
+
+# Split in train and validation
 print('Split into train and validation')
 split_msk = np.random.rand(len(df)) < 0.9
 
@@ -73,7 +79,7 @@ dom_segs_train = tiledb.Domain(
     )
 
 attrs = [
-        tiledb.Attr(name="segments", var=True, dtype="U", ctx=ctx),
+        tiledb.Attr(name="segment", var=True, dtype="U", ctx=ctx),
     ]
 
 schema = tiledb.ArraySchema(domain=dom_segs_train, sparse=False, attrs=attrs, ctx=ctx)
@@ -82,7 +88,7 @@ array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/train_ship_segments"
 
 tiledb.Array.create(array, schema)
 
-data_dict = {'segments': train_segs}
+data_dict = {'segment': train_segs}
 
 print('Injecting training segments to TileDB...')
 with tiledb.open(array, 'w', ctx=ctx) as array:
@@ -100,7 +106,7 @@ array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/val_ship_segments"
 
 tiledb.Array.create(array, schema)
 
-data_dict = {'segments': val_segs}
+data_dict = {'segment': val_segs}
 
 print('Injecting validation segments to TileDB...')
 with tiledb.open(array, 'w', ctx=ctx) as array:
