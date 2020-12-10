@@ -44,10 +44,10 @@ df = df.replace(np.nan, '', regex=True)
 # df = df.groupby('ImageId')['EncodedPixels'].apply(np.array)
 
 # Strings to numpy of strings
-df = df['EncodedPixels'].apply(np.array)
+df['EncodedPixels'] = df['EncodedPixels'].apply(np.array)
 
-df = pd.DataFrame(df).reset_index()
-df.columns = ['ImageId', 'EncodedPixels']
+# df = pd.DataFrame(df).reset_index()
+# df.columns = ['ImageId', 'EncodedPixels']
 
 # Shuffle dataframe
 df = df.sample(frac=1)
