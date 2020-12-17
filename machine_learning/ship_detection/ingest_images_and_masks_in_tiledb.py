@@ -126,7 +126,7 @@ dom_image_train = tiledb.Domain(
 
 attrs = [
         tiledb.Attr(name="rgb", dtype=[("", np.uint8), ("", np.uint8), ("", np.uint8)], var=False,
-                    filters=tiledb.FilterList([tiledb.BitShuffleFilter()])),
+                    filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)])),
     ]
 
 # attrs = [
