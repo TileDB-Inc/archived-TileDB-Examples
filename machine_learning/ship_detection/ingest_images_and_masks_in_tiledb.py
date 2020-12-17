@@ -124,17 +124,16 @@ dom_image_train = tiledb.Domain(
     ctx=ctx,
 )
 
-# attrs = [
-#         tiledb.Attr(name="rgb", dtype=[("", np.uint8), ("", np.uint8), ("", np.uint8)], var=False,
-#                     filters=tiledb.FilterList([tiledb.ZstdFilter(level=6, ctx=ctx)], ctx=ctx), ctx=ctx),
-#     ]
-
-
 attrs = [
-        tiledb.Attr(name="r", dtype=np.uint8, var=False, filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)])),
-        tiledb.Attr(name="g", dtype=np.uint8, var=False, filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)])),
-        tiledb.Attr(name="b", dtype=np.uint8, var=False, filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)])),
-]
+        tiledb.Attr(name="rgb", dtype=[("", np.uint8), ("", np.uint8), ("", np.uint8)], var=False,
+                    filters=tiledb.FilterList([tiledb.BitShuffleFilter()])),
+    ]
+
+# attrs = [
+#         tiledb.Attr(name="r", dtype=np.uint8, var=False, filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)])),
+#         tiledb.Attr(name="g", dtype=np.uint8, var=False, filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)])),
+#         tiledb.Attr(name="b", dtype=np.uint8, var=False, filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)])),
+# ]
 
 
 schema = tiledb.ArraySchema(domain=dom_image_train,
@@ -165,10 +164,10 @@ with tiledb.open(array, 'w', ctx=ctx) as train_images_tiledb:
 
         print('Inserting chunk ' + str(counter) + ' of ' + str(number_of_chunks))
         image_chunk = np.stack(image_chunk, axis=0)
-        # view = image_chunk.view([("", np.uint8), ("", np.uint8), ("", np.uint8)])
+        view = image_chunk.view([("", np.uint8), ("", np.uint8), ("", np.uint8)])
         start = time.time()
-        train_images_tiledb[tpl[0]:tpl[1]] = {"r": image_chunk[:, :, :, 0], "g": image_chunk[:, :, :, 1], "b": image_chunk[:, :, :, 2]}
-        # train_images_tiledb[tpl[0]:tpl[1]] = view
+        #train_images_tiledb[tpl[0]:tpl[1]] = {"r": image_chunk[:, :, :, 0], "g": image_chunk[:, :, :, 1], "b": image_chunk[:, :, :, 2]}
+        train_images_tiledb[tpl[0]:tpl[1]] = view
         life_taken = time.time() - start
         print('Insertion took ' + str(life_taken) + 'seconds.')
         counter += 1
@@ -217,9 +216,10 @@ with tiledb.open(array, 'w', ctx=ctx) as val_images_tiledb:
 
         print('Inserting chunk ' + str(counter) + ' of ' + str(number_of_chunks))
         image_chunk = np.stack(image_chunk, axis=0)
-        # view = image_chunk.view([("", np.uint8), ("", np.uint8), ("", np.uint8)])
+        view = image_chunk.view([("", np.uint8), ("", np.uint8), ("", np.uint8)])
         start = time.time()
-        val_images_tiledb[tpl[0]:tpl[1]] = {"r": image_chunk[:, :, :, 0], "g": image_chunk[:, :, :, 1], "b": image_chunk[:, :, :, 2]}
+        #val_images_tiledb[tpl[0]:tpl[1]] = {"r": image_chunk[:, :, :, 0], "g": image_chunk[:, :, :, 1], "b": image_chunk[:, :, :, 2]}
+        val_images_tiledb[tpl[0]:tpl[1]] = view
         life_taken = time.time() - start
         print('Insertion took ' + str(life_taken) + 'seconds.')
         counter += 1
