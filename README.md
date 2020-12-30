@@ -1,6 +1,6 @@
-# TileDB-Cloud-Example-Notebooks
+# TileDB-Examples
 
-Notebooks which are dedicated examples for TileDB Cloud
+This is a repository dedicated to example of TileDB Usage.
 
 ## Quickstart
 
