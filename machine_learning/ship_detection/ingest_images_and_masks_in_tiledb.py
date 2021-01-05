@@ -69,50 +69,45 @@ val_segs = val_segs.reshape(len(val_df), 1)
 
 
 # Ingestion
-
 ctx = tiledb.Ctx()
 
-print('Creating training segments TileDB array...')
-dom_segs_train = tiledb.Domain(
-    tiledb.Dim(name="image_id", domain=(0, len(train_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
-        ctx=ctx,
-    )
-
-attrs = [
-        tiledb.Attr(name="segment", var=True, dtype="U", ctx=ctx),
-    ]
-
-schema = tiledb.ArraySchema(domain=dom_segs_train, sparse=False, attrs=attrs, ctx=ctx)
-
-array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/train_ship_segments"
-
-tiledb.Array.create(array, schema)
-
-data_dict = {'segment': train_segs}
-
-print('Injecting training segments to TileDB...')
-with tiledb.open(array, 'w', ctx=ctx) as array:
-    array[:] = data_dict
-
-print('Creating validation segments TileDB array...')
-dom_segs_val = tiledb.Domain(
-    tiledb.Dim(name="image_id", domain=(0, len(val_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
-        ctx=ctx,
-    )
-
-schema = tiledb.ArraySchema(domain=dom_segs_val, sparse=False, attrs=attrs, ctx=ctx)
-
-array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/val_ship_segments"
-
-tiledb.Array.create(array, schema)
-
-data_dict = {'segment': val_segs}
-
-print('Injecting validation segments to TileDB...')
-with tiledb.open(array, 'w', ctx=ctx) as array:
-    array[:] = data_dict
-
-print('Done with segments!')
+# print('Creating training segments TileDB array...')
+# dom_segs_train = tiledb.Domain(
+#     tiledb.Dim(name="image_id", domain=(0, len(train_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
+#         ctx=ctx,
+#     )
+#
+# attrs = [
+#         tiledb.Attr(name="segment", var=True, dtype="U", ctx=ctx),
+#     ]
+#
+# schema = tiledb.ArraySchema(domain=dom_segs_train, sparse=False, attrs=attrs, ctx=ctx)
+#
+# array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/train_ship_segments"
+#
+# tiledb.Array.create(array, schema)
+#
+# print('Injecting training segments to TileDB...')
+# with tiledb.open(array, 'w', ctx=ctx) as array:
+#     array[:] = {"segment": train_segs}
+#
+# print('Creating validation segments TileDB array...')
+# dom_segs_val = tiledb.Domain(
+#     tiledb.Dim(name="image_id", domain=(0, len(val_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
+#         ctx=ctx,
+#     )
+#
+# schema = tiledb.ArraySchema(domain=dom_segs_val, sparse=False, attrs=attrs, ctx=ctx)
+#
+# array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/val_ship_segments"
+#
+# tiledb.Array.create(array, schema)
+#
+# print('Injecting validation segments to TileDB...')
+# with tiledb.open(array, 'w', ctx=ctx) as array:
+#     array[:] = {"segment": val_segs}
+#
+# print('Done with segments!')
 
 
 print('Ingestion of training images...')
@@ -128,13 +123,6 @@ attrs = [
         tiledb.Attr(name="rgb", dtype=[("", np.uint8), ("", np.uint8), ("", np.uint8)], var=False,
                     filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)])),
     ]
-
-# attrs = [
-#         tiledb.Attr(name="r", dtype=np.uint8, var=False, filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)])),
-#         tiledb.Attr(name="g", dtype=np.uint8, var=False, filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)])),
-#         tiledb.Attr(name="b", dtype=np.uint8, var=False, filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)])),
-# ]
-
 
 schema = tiledb.ArraySchema(domain=dom_image_train,
                             sparse=False,
@@ -182,11 +170,6 @@ dom_image_val = tiledb.Domain(
     tiledb.Dim(name="y_axis", domain=(0, 768 - 1), tile=768, dtype=np.int32),
     ctx=ctx,
 )
-
-#attrs = [
-#        tiledb.Attr(name="rgb", dtype=[("", np.uint8), ("", np.uint8), ("", np.uint8)], var=False,
-#                    filters=tiledb.FilterList([tiledb.ZstdFilter(level=6, ctx=ctx)], ctx=ctx), ctx=ctx),
-#    ]
 
 schema = tiledb.ArraySchema(domain=dom_image_val,
                             sparse=False,
