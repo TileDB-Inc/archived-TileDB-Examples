@@ -11,6 +11,7 @@ bucket = 'tiledb-gskoumas'
 prefix = 'airbus_ship_detection/train_v2'
 BATCH_SIZE = 32
 
+one_hot_encodings = np.eye(2, dtype=np.float32)
 
 def chunks(lst, n=BATCH_SIZE):
     """Yield successive n-sized chunks from lst."""
@@ -34,17 +35,17 @@ df = pd.concat([grouped_df.get_group(True), grouped_df.get_group(False).sample(n
 del grouped_df
 
 # Drop not needed column
-df = df.drop('has_ship', axis=1)
+df = df.drop('EncodedPixels', axis=1)
 
 # Replace nans with empty strings
-df = df.replace(np.nan, '', regex=True)
+# df = df.replace(np.nan, '', regex=True)
 
 # Group by image ids, as some images contain more than one masks
 # print("Grouping by image id...")
 # df = df.groupby('ImageId')['EncodedPixels'].apply(np.array)
 
 # Strings to numpy of strings
-df['EncodedPixels'] = df['EncodedPixels'].apply(np.array)
+# df['EncodedPixels'] = df['EncodedPixels'].apply(np.array)
 
 # df = pd.DataFrame(df).reset_index()
 # df.columns = ['ImageId', 'EncodedPixels']
@@ -61,53 +62,55 @@ val_df = df[~split_msk]
 
 del df
 
-train_segs = train_df['EncodedPixels'].to_numpy()
-val_segs = val_df['EncodedPixels'].to_numpy()
+#train_segs = train_df['EncodedPixels'].to_numpy()
+#val_segs = val_df['EncodedPixels'].to_numpy()
 
-train_segs = train_segs.reshape(len(train_df), 1)
-val_segs = val_segs.reshape(len(val_df), 1)
+#train_segs = train_segs.reshape(len(train_df), 1)
+#val_segs = val_segs.reshape(len(val_df), 1)
 
+train_labels = [1 if label is True else 0 for label in train_df['has_ship']]
+val_labels = [1 if label is True else 0 for label in val_df['has_ship']]
+
+train_labels = np.stack(train_labels, axis=0).astype(np.int8)
+val_labels = np.stack(val_labels, axis=0).astype(np.int8)
 
 # Ingestion
 ctx = tiledb.Ctx()
 
-# print('Creating training segments TileDB array...')
-# dom_segs_train = tiledb.Domain(
-#     tiledb.Dim(name="image_id", domain=(0, len(train_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
-#         ctx=ctx,
-#     )
-#
-# attrs = [
-#         tiledb.Attr(name="segment", var=True, dtype="U", ctx=ctx),
-#     ]
-#
-# schema = tiledb.ArraySchema(domain=dom_segs_train, sparse=False, attrs=attrs, ctx=ctx)
-#
-# array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/train_ship_segments"
-#
-# tiledb.Array.create(array, schema)
-#
-# print('Injecting training segments to TileDB...')
-# with tiledb.open(array, 'w', ctx=ctx) as array:
-#     array[:] = {"segment": train_segs}
-#
-# print('Creating validation segments TileDB array...')
-# dom_segs_val = tiledb.Domain(
-#     tiledb.Dim(name="image_id", domain=(0, len(val_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
-#         ctx=ctx,
-#     )
-#
-# schema = tiledb.ArraySchema(domain=dom_segs_val, sparse=False, attrs=attrs, ctx=ctx)
-#
-# array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/val_ship_segments"
-#
-# tiledb.Array.create(array, schema)
-#
-# print('Injecting validation segments to TileDB...')
-# with tiledb.open(array, 'w', ctx=ctx) as array:
-#     array[:] = {"segment": val_segs}
-#
-# print('Done with segments!')
+print('Creating training segments TileDB array...')
+train_label_id = tiledb.Dim(name="label_id", domain=(0, len(train_df) - 1), tile=BATCH_SIZE, dtype=np.int32)
+
+train_labels_schema = tiledb.ArraySchema(domain=tiledb.Domain(train_label_id),
+                                         sparse=False,
+                                         attrs=[tiledb.Attr(name="label",
+                                                            dtype=np.int8)])
+
+array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/train_ship_segments"
+
+tiledb.Array.create(array, train_labels_schema)
+
+print('Injecting training segments to TileDB...')
+with tiledb.open(array, 'w') as array:
+     array[:] = {"label": train_labels}
+
+print('Creating validation segments TileDB array...')
+val_label_id = tiledb.Dim(name="label_id", domain=(0, len(val_df) - 1), tile=BATCH_SIZE, dtype=np.int32)
+
+val_labels_schema = tiledb.ArraySchema(domain=tiledb.Domain(val_label_id),
+                                       sparse=False,
+                                       attrs=[tiledb.Attr(name="label",
+                                                          dtype=np.int8)])
+
+array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/val_ship_segments"
+
+tiledb.Array.create(array, val_labels_schema)
+
+print('Injecting validation segments to TileDB...')
+
+with tiledb.open(array, 'w', ctx=ctx) as array:
+     array[:] = {"label": val_labels}
+
+print('Done with segments!')
 
 
 print('Ingestion of training images...')
@@ -210,3 +213,28 @@ with tiledb.open(array, 'w', ctx=ctx) as val_images_tiledb:
 
 print('Done with image ingestion!')
 
+train_images = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/train_ship_images"
+train_segs = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/train_ship_segments"
+
+val_images = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/val_ship_images"
+val_segs = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/val_ship_segments"
+
+# Alteratively, you can create and pass a configuration object
+config = tiledb.Config({"sm.consolidation.mode": "fragment_meta"})
+ctx = tiledb.Ctx(config)
+
+print('Consolidating train images...')
+tiledb.consolidate(train_images, ctx=ctx)
+print('Consolidating train images done!')
+
+print('Consolidating train segments...')
+tiledb.consolidate(train_segs, ctx=ctx)
+print('Consolidating train segments done!')
+
+print('Consolidating val images...')
+tiledb.consolidate(val_images, ctx=ctx)
+print('Consolidating val images done!')
+
+print('Consolidating val segments...')
+tiledb.consolidate(val_segs, ctx=ctx)
+print('Consolidating val segments done!')
