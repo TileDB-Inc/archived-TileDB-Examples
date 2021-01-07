@@ -9,9 +9,7 @@ s3 = boto3.client('s3')
 
 bucket = 'tiledb-gskoumas'
 prefix = 'airbus_ship_detection/train_v2'
-BATCH_SIZE = 32
-
-one_hot_encodings = np.eye(2, dtype=np.float32)
+BATCH_SIZE = 64
 
 def chunks(lst, n=BATCH_SIZE):
     """Yield successive n-sized chunks from lst."""
@@ -117,8 +115,8 @@ print('Ingestion of training images...')
 
 dom_image_train = tiledb.Domain(
     tiledb.Dim(name="image_id", domain=(0, len(train_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
-    tiledb.Dim(name="x_axis", domain=(0, 768 - 1), tile=768, dtype=np.int32),
-    tiledb.Dim(name="y_axis", domain=(0, 768 - 1), tile=768, dtype=np.int32),
+    tiledb.Dim(name="x_axis", domain=(0, 128 - 1), tile=128, dtype=np.int32),
+    tiledb.Dim(name="y_axis", domain=(0, 128 - 1), tile=128, dtype=np.int32),
     ctx=ctx,
 )
 
@@ -151,6 +149,7 @@ with tiledb.open(array, 'w', ctx=ctx) as train_images_tiledb:
         for image_id in chunk:
             image_path = 'train_v2/' + image_id
             image = cv2.imread(image_path)
+            image = cv2.resize(image, (128, 128))
             image_chunk.append(image.astype(np.uint8))
 
         print('Inserting chunk ' + str(counter) + ' of ' + str(number_of_chunks))
@@ -169,8 +168,8 @@ print('Ingestion of validation images...')
 
 dom_image_val = tiledb.Domain(
     tiledb.Dim(name="image_id", domain=(0, len(val_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
-    tiledb.Dim(name="x_axis", domain=(0, 768 - 1), tile=768, dtype=np.int32),
-    tiledb.Dim(name="y_axis", domain=(0, 768 - 1), tile=768, dtype=np.int32),
+    tiledb.Dim(name="x_axis", domain=(0, 128 - 1), tile=128, dtype=np.int32),
+    tiledb.Dim(name="y_axis", domain=(0, 128 - 1), tile=128, dtype=np.int32),
     ctx=ctx,
 )
 
@@ -198,6 +197,7 @@ with tiledb.open(array, 'w', ctx=ctx) as val_images_tiledb:
         for image_id in chunk:
             image_path = 'train_v2/' + image_id
             image = cv2.imread(image_path)
+            image = cv2.resize(image, (128, 128))
             image_chunk.append(image.astype(np.uint8))
 
         print('Inserting chunk ' + str(counter) + ' of ' + str(number_of_chunks))
