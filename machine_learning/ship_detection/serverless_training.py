@@ -3,27 +3,23 @@ import tiledb.cloud as cloud
 import os
 import numpy as np
 import boto3
-
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPool2D
-from tensorflow.keras.layers import Flatten, Dense
+import tensorflow as tf
 
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+TILEDB_USER_NAME = os.environ.get('TILEDB_USER_NAME')
+TILEDB_PASSWD = os.environ.get('TILEDB_PASSWD')
 
-# Get TileDB token from file
-TILE_DB_TOKEN = os.popen('cat token').read()
-
-# Batch size for training
 BATCH_SIZE = 64
 IMAGE_SHAPE = (128, 128, 3)
 NUM_OF_CLASSES = 2
 
-# We don't have to use all our data
-TRAIN_DATA_SHAPE = 500 * BATCH_SIZE
-VAL_DATA_SHAPE = 100 * BATCH_SIZE
+# We don't have to use all our data for this example. Just get some batches
+# from training and validation datasets
+TRAIN_DATA_SHAPE = 50 * BATCH_SIZE
+VAL_DATA_SHAPE = 5 * BATCH_SIZE
 
-EPOCHS = 3
+EPOCHS = 1
 
 TRAIN_IMAGES_ARRAY = "tiledb://gskoumas/train_ship_images"
 TRAIN_LABELS_ARRAY = "tiledb://gskoumas/train_ship_segments"
@@ -32,7 +28,7 @@ VAL_IMAGES_ARRAY = "tiledb://gskoumas/val_ship_images"
 VAL_LABELS_ARRAY = "tiledb://gskoumas/val_ship_segments"
 
 
-def generator(tiledb_images_obj, tiledb_labels_obj, shape, batch_size=BATCH_SIZE):
+def generator(tiledb_images_obj, tiledb_labels_obj, shape):
     """
     Yields the next training batch.
     """
@@ -40,23 +36,23 @@ def generator(tiledb_images_obj, tiledb_labels_obj, shape, batch_size=BATCH_SIZE
     while True:  # Loop forever so the generator never terminates
 
         # Get index to start each batch
-        for offset in range(0, shape, batch_size):
+        for offset in range(0, shape, BATCH_SIZE):
 
             # Get the samples you'll use in this batch. We have to convert structured numpy arrays to
             # numpy arrays.
 
             # Avoid reshaping error in last batch
-            if offset + batch_size > shape:
+            if offset + BATCH_SIZE > shape:
                 batch_size = shape - offset
 
-            x_train = tiledb_images_obj[offset:offset + batch_size]['rgb'].\
-                view(np.uint8).reshape(batch_size, IMAGE_SHAPE[0], IMAGE_SHAPE[1], IMAGE_SHAPE[2])
+            x_train = tiledb_images_obj[offset:offset + BATCH_SIZE]['rgb'].\
+                view(np.uint8).reshape(BATCH_SIZE, IMAGE_SHAPE[0], IMAGE_SHAPE[1], IMAGE_SHAPE[2])
 
             # Scale RGB
             x_train = x_train.astype(np.float32) / 255.0
 
             # One hot encode Y
-            y_train = tiledb_labels_obj[offset:offset + batch_size]['label']
+            y_train = tiledb_labels_obj[offset:offset + BATCH_SIZE]['label']
             y_train = [np.array([1.0, 0.0]) if item == 1 else np.array([0.0, 1.0]) for item in y_train]
             y_train = np.stack(y_train, axis=0).astype(np.float32)
 
@@ -65,11 +61,11 @@ def generator(tiledb_images_obj, tiledb_labels_obj, shape, batch_size=BATCH_SIZE
 
 def create_model():
 
-    model = Sequential()
-    model.add(Conv2D(32, 3, padding="same", activation="relu", input_shape=IMAGE_SHAPE))
-    model.add(MaxPool2D())
-    model.add(Flatten())
-    model.add(Dense(2, activation="softmax"))
+    model = tf.keras.Sequential([
+        tf.keras.layers.Flatten(input_shape=IMAGE_SHAPE),
+        tf.keras.layers.Dense(16, activation='relu'),
+        tf.keras.layers.Dense(NUM_OF_CLASSES)
+    ])
 
     model.compile(loss='binary_crossentropy',
                   optimizer='rmsprop',
@@ -107,20 +103,20 @@ def train(gen_func, model_func):
     if not os.path.exists('models'):
         os.makedirs('models')
 
+    model.save('models/model.h5')
+
     client = boto3.client(
         's3',
         aws_access_key_id=AWS_ACCESS_KEY_ID,
         aws_secret_access_key=AWS_SECRET_ACCESS_KEY
     )
 
-    model.save('models/model.h5')
-
     client.upload_file('models/model.h5', 'tiledb-gskoumas', 'airbus_ship_detection_tiledb/models/model.h5')
 
     return
 
 
-tiledb.cloud.login(token=TILE_DB_TOKEN)
+tiledb.cloud.login(username=TILEDB_USER_NAME, password=TILEDB_PASSWD)
 
 tiledb.cloud.udf.exec(train,
                       gen_func=generator,
