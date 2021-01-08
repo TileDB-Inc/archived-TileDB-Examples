@@ -2,7 +2,7 @@ import tiledb
 import tiledb.cloud as cloud
 import os
 import numpy as np
-import boto3
+import json
 import tensorflow as tf
 
 
@@ -11,6 +11,7 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 TILEDB_USER_NAME = os.environ.get('TILEDB_USER_NAME')
 TILEDB_PASSWD = os.environ.get('TILEDB_PASSWD')
 
+MODEL_ARRAY = "tiledb://gskoumas/model"
 VAL_IMAGES_ARRAY = "tiledb://gskoumas/val_ship_images"
 
 BATCH_SIZE = 64
@@ -19,18 +20,14 @@ IMAGE_SHAPE = (128, 128, 3)
 
 def ask_model():
 
-    if not os.path.exists('models'):
-        os.makedirs('models')
+    model_array = tiledb.open(MODEL_ARRAY)
+    model_weights = model_array[:]
+    model_weights = [array.reshape(model_array.meta["shape_" + str(indx)]) for indx, array in enumerate(model_weights)]
 
-    client = boto3.client(
-        's3',
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-    )
+    model_architecture = json.loads(model_array.meta["architecture"])
 
-    client.download_file('tiledb-gskoumas', 'airbus_ship_detection_tiledb/models/model.h5', 'models/model.h5')
-
-    model = tf.keras.models.load_model('models/model.h5')
+    model = tf.keras.Sequential.from_config(model_architecture)
+    model.set_weights(model_weights)
 
     val_image_array = tiledb.open(VAL_IMAGES_ARRAY)
 
