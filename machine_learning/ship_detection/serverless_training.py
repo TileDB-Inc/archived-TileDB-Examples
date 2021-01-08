@@ -64,7 +64,7 @@ def create_model():
     model = tf.keras.Sequential([
         tf.keras.layers.Flatten(input_shape=IMAGE_SHAPE),
         tf.keras.layers.Dense(16, activation='relu'),
-        tf.keras.layers.Dense(NUM_OF_CLASSES)
+        tf.keras.layers.Dense(NUM_OF_CLASSES, activation='sigmoid')
     ])
 
     model.compile(loss='binary_crossentropy',
@@ -83,8 +83,8 @@ def train(gen_func, model_func):
     val_label_array = tiledb.open(VAL_LABELS_ARRAY)
 
     # Create generators to read batches from TileDB arrays
-    train_generator = gen_func(train_image_array, train_label_array, TRAIN_DATA_SHAPE, BATCH_SIZE)
-    validate_generator = gen_func(val_image_array, val_label_array, VAL_DATA_SHAPE, BATCH_SIZE)
+    train_generator = gen_func(train_image_array, train_label_array, TRAIN_DATA_SHAPE)
+    validate_generator = gen_func(val_image_array, val_label_array, VAL_DATA_SHAPE)
 
     # Create a model and pass it to the udf
     model = model_func()
