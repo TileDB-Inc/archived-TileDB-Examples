@@ -14,8 +14,8 @@ TILEDB_PASSWD = os.environ.get('TILEDB_PASSWD')
 MODEL_ARRAY = "tiledb://gskoumas/model"
 VAL_IMAGES_ARRAY = "tiledb://gskoumas/val_ship_images"
 
-BATCH_SIZE = 64
-IMAGE_SHAPE = (128, 128, 3)
+BATCH_SIZE = 32
+IMAGE_SHAPE = (64, 64, 3)
 
 
 def ask_model():
@@ -33,10 +33,7 @@ def ask_model():
 
     # Get data for prediction
     X = val_image_array[0:BATCH_SIZE]['rgb'].\
-        view(np.uint8).reshape(BATCH_SIZE, IMAGE_SHAPE[0], IMAGE_SHAPE[1], IMAGE_SHAPE[2])
-
-    # Scale RGB
-    X = X.astype(np.float32) / 255.0
+        view(np.float32).reshape(BATCH_SIZE, IMAGE_SHAPE[0], IMAGE_SHAPE[1], IMAGE_SHAPE[2])
 
     return model.predict(X)
 
@@ -46,3 +43,4 @@ tiledb.cloud.login(username=TILEDB_USER_NAME, password=TILEDB_PASSWD)
 predictions = tiledb.cloud.udf.exec(ask_model)
 
 print(tiledb.cloud.last_udf_task().logs)
+print(predictions)

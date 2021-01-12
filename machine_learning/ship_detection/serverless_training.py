@@ -10,8 +10,8 @@ AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 TILEDB_USER_NAME = os.environ.get('TILEDB_USER_NAME')
 TILEDB_PASSWD = os.environ.get('TILEDB_PASSWD')
 
-BATCH_SIZE = 64
-IMAGE_SHAPE = (128, 128, 3)
+BATCH_SIZE = 32
+IMAGE_SHAPE = (64, 64, 3)
 NUM_OF_CLASSES = 2
 
 # We don't have to use all our data for this example. Just get some batches
@@ -48,14 +48,11 @@ def generator(tiledb_images_obj, tiledb_labels_obj, shape):
                 batch_size = shape - offset
 
             x_train = tiledb_images_obj[offset:offset + BATCH_SIZE]['rgb']. \
-                view(np.uint8).reshape(BATCH_SIZE, IMAGE_SHAPE[0], IMAGE_SHAPE[1], IMAGE_SHAPE[2])
-
-            # Scale RGB
-            x_train = x_train.astype(np.float32) / 255.0
+                view(np.float32).reshape(BATCH_SIZE, IMAGE_SHAPE[0], IMAGE_SHAPE[1], IMAGE_SHAPE[2])
 
             # One hot encode Y
             y_train = tiledb_labels_obj[offset:offset + BATCH_SIZE]['label']
-            y_train = [np.array([1.0, 0.0]) if item == 1 else np.array([0.0, 1.0]) for item in y_train]
+            y_train = [np.array([1.0, 0.0]) if item == 1.0 else np.array([0.0, 1.0]) for item in y_train]
             y_train = np.stack(y_train, axis=0).astype(np.float32)
 
             yield x_train, y_train
@@ -64,7 +61,7 @@ def generator(tiledb_images_obj, tiledb_labels_obj, shape):
 def create_model():
     model = tf.keras.Sequential([
         tf.keras.layers.Flatten(input_shape=IMAGE_SHAPE),
-        tf.keras.layers.Dense(16, activation='relu'),
+        tf.keras.layers.Dense(8, activation='relu'),
         tf.keras.layers.Dense(NUM_OF_CLASSES, activation='sigmoid')
     ])
 
@@ -109,6 +106,8 @@ model_weights, config = tiledb.cloud.udf.exec(train,
                                               gen_func=generator,
                                               model_func=create_model
                                               )
+
+print(tiledb.cloud.last_udf_task().logs)
 
 # Save model weights and architecture as a 1-D TileDB array with metadata
 ctx = tiledb.Ctx()
