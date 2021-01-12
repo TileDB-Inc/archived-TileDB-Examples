@@ -102,8 +102,8 @@ print('Done with segments!')
 print('Ingestion of training images...')
 dom_image_train = tiledb.Domain(
     tiledb.Dim(name="image_id", domain=(0, len(train_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
-    tiledb.Dim(name="x_axis", domain=(0, 128 - 1), tile=128, dtype=np.int32),
-    tiledb.Dim(name="y_axis", domain=(0, 128 - 1), tile=128, dtype=np.int32),
+    tiledb.Dim(name="x_axis", domain=(0, IMAGE_SHAPE[0] - 1), tile=IMAGE_SHAPE[0], dtype=np.int32),
+    tiledb.Dim(name="y_axis", domain=(0, IMAGE_SHAPE[1] - 1), tile=IMAGE_SHAPE[1], dtype=np.int32),
     ctx=ctx,
 )
 
@@ -155,8 +155,8 @@ print('Ingestion of validation images...')
 
 dom_image_val = tiledb.Domain(
     tiledb.Dim(name="image_id", domain=(0, len(val_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
-    tiledb.Dim(name="x_axis", domain=(0, 128 - 1), tile=128, dtype=np.int32),
-    tiledb.Dim(name="y_axis", domain=(0, 128 - 1), tile=128, dtype=np.int32),
+    tiledb.Dim(name="x_axis", domain=(0, IMAGE_SHAPE[0] - 1), tile=IMAGE_SHAPE[0], dtype=np.int32),
+    tiledb.Dim(name="y_axis", domain=(0, IMAGE_SHAPE[1] - 1), tile=IMAGE_SHAPE[1], dtype=np.int32),
     ctx=ctx,
 )
 
