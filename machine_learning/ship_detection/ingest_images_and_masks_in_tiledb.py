@@ -9,7 +9,11 @@ s3 = boto3.client('s3')
 
 bucket = 'tiledb-gskoumas'
 prefix = 'airbus_ship_detection/train_v2'
-BATCH_SIZE = 64
+
+BATCH_SIZE = 32
+
+IMAGE_SHAPE = (64, 64)
+
 
 def chunks(lst, n=BATCH_SIZE):
     """Yield successive n-sized chunks from lst."""
@@ -30,23 +34,8 @@ grouped_df = df.groupby('has_ship')
 
 df = pd.concat([grouped_df.get_group(True), grouped_df.get_group(False).sample(n=unique_non_empty_images)])
 
-del grouped_df
-
 # Drop not needed column
 df = df.drop('EncodedPixels', axis=1)
-
-# Replace nans with empty strings
-# df = df.replace(np.nan, '', regex=True)
-
-# Group by image ids, as some images contain more than one masks
-# print("Grouping by image id...")
-# df = df.groupby('ImageId')['EncodedPixels'].apply(np.array)
-
-# Strings to numpy of strings
-# df['EncodedPixels'] = df['EncodedPixels'].apply(np.array)
-
-# df = pd.DataFrame(df).reset_index()
-# df.columns = ['ImageId', 'EncodedPixels']
 
 # Shuffle dataframe
 df = df.sample(frac=1)
@@ -58,52 +47,51 @@ split_msk = np.random.rand(len(df)) < 0.9
 train_df = df[split_msk]
 val_df = df[~split_msk]
 
-del df
+train_labels = [1.0 if label is True else 0.0 for label in train_df['has_ship']]
+val_labels = [1.0 if label is True else 0.0 for label in val_df['has_ship']]
 
-#train_segs = train_df['EncodedPixels'].to_numpy()
-#val_segs = val_df['EncodedPixels'].to_numpy()
-
-#train_segs = train_segs.reshape(len(train_df), 1)
-#val_segs = val_segs.reshape(len(val_df), 1)
-
-train_labels = [1 if label is True else 0 for label in train_df['has_ship']]
-val_labels = [1 if label is True else 0 for label in val_df['has_ship']]
-
-train_labels = np.stack(train_labels, axis=0).astype(np.int8)
-val_labels = np.stack(val_labels, axis=0).astype(np.int8)
+train_labels = np.array(train_labels, dtype=np.float32)
+val_labels = np.array(val_labels, dtype=np.float32)
 
 # Ingestion
+print('Creating training segments TileDB array...')
+
 ctx = tiledb.Ctx()
 
-print('Creating training segments TileDB array...')
-train_label_id = tiledb.Dim(name="label_id", domain=(0, len(train_df) - 1), tile=BATCH_SIZE, dtype=np.int32)
+dom = tiledb.Domain(
+    tiledb.Dim(name="label_id", domain=(0, len(train_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
+)
 
-train_labels_schema = tiledb.ArraySchema(domain=tiledb.Domain(train_label_id),
-                                         sparse=False,
-                                         attrs=[tiledb.Attr(name="label",
-                                                            dtype=np.int8)])
+attrs = [
+    tiledb.Attr(name="label", dtype=np.float32,)
+]
+
+schema = tiledb.ArraySchema(domain=dom, sparse=False, attrs=attrs)
 
 array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/train_ship_segments"
 
-tiledb.Array.create(array, train_labels_schema)
+tiledb.Array.create(array, schema)
 
-print('Injecting training segments to TileDB...')
+print('Ingesting training segments to TileDB...')
 with tiledb.open(array, 'w') as array:
-     array[:] = {"label": train_labels}
+    array[:] = {"label": train_labels}
 
 print('Creating validation segments TileDB array...')
-val_label_id = tiledb.Dim(name="label_id", domain=(0, len(val_df) - 1), tile=BATCH_SIZE, dtype=np.int32)
+dom = tiledb.Domain(
+    tiledb.Dim(name="label_id", domain=(0, len(val_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
+)
 
-val_labels_schema = tiledb.ArraySchema(domain=tiledb.Domain(val_label_id),
-                                       sparse=False,
-                                       attrs=[tiledb.Attr(name="label",
-                                                          dtype=np.int8)])
+attrs = [
+    tiledb.Attr(name="label", dtype=np.float32,)
+]
+
+schema = tiledb.ArraySchema(domain=dom, sparse=False, attrs=attrs)
 
 array = "s3://tiledb-gskoumas/airbus_ship_detection_tiledb/val_ship_segments"
 
-tiledb.Array.create(array, val_labels_schema)
+tiledb.Array.create(array, schema)
 
-print('Injecting validation segments to TileDB...')
+print('Ingesting validation segments to TileDB...')
 
 with tiledb.open(array, 'w', ctx=ctx) as array:
      array[:] = {"label": val_labels}
@@ -112,7 +100,6 @@ print('Done with segments!')
 
 
 print('Ingestion of training images...')
-
 dom_image_train = tiledb.Domain(
     tiledb.Dim(name="image_id", domain=(0, len(train_df) - 1), tile=BATCH_SIZE, dtype=np.int32),
     tiledb.Dim(name="x_axis", domain=(0, 128 - 1), tile=128, dtype=np.int32),
@@ -121,7 +108,7 @@ dom_image_train = tiledb.Domain(
 )
 
 attrs = [
-        tiledb.Attr(name="rgb", dtype=[("", np.uint8), ("", np.uint8), ("", np.uint8)], var=False,
+        tiledb.Attr(name="rgb", dtype=[("", np.float32), ("", np.float32), ("", np.float32)], var=False,
                     filters=tiledb.FilterList([tiledb.ZstdFilter(level=6)])),
     ]
 
@@ -149,12 +136,12 @@ with tiledb.open(array, 'w', ctx=ctx) as train_images_tiledb:
         for image_id in chunk:
             image_path = 'train_v2/' + image_id
             image = cv2.imread(image_path)
-            image = cv2.resize(image, (128, 128))
-            image_chunk.append(image.astype(np.uint8))
+            image = cv2.resize(image, IMAGE_SHAPE)
+            image_chunk.append(image.astype(np.float32))
 
         print('Inserting chunk ' + str(counter) + ' of ' + str(number_of_chunks))
-        image_chunk = np.stack(image_chunk, axis=0)
-        view = image_chunk.view([("", np.uint8), ("", np.uint8), ("", np.uint8)])
+        image_chunk = np.stack(image_chunk, axis=0) / 255.0
+        view = image_chunk.view([("", np.float32), ("", np.float32), ("", np.float32)])
         start = time.time()
         #train_images_tiledb[tpl[0]:tpl[1]] = {"r": image_chunk[:, :, :, 0], "g": image_chunk[:, :, :, 1], "b": image_chunk[:, :, :, 2]}
         train_images_tiledb[tpl[0]:tpl[1]] = view
@@ -197,12 +184,12 @@ with tiledb.open(array, 'w', ctx=ctx) as val_images_tiledb:
         for image_id in chunk:
             image_path = 'train_v2/' + image_id
             image = cv2.imread(image_path)
-            image = cv2.resize(image, (128, 128))
-            image_chunk.append(image.astype(np.uint8))
+            image = cv2.resize(image, IMAGE_SHAPE)
+            image_chunk.append(image.astype(np.float32))
 
         print('Inserting chunk ' + str(counter) + ' of ' + str(number_of_chunks))
         image_chunk = np.stack(image_chunk, axis=0)
-        view = image_chunk.view([("", np.uint8), ("", np.uint8), ("", np.uint8)])
+        view = image_chunk.view([("", np.float32), ("", np.float32), ("", np.float32)])
         start = time.time()
         #val_images_tiledb[tpl[0]:tpl[1]] = {"r": image_chunk[:, :, :, 0], "g": image_chunk[:, :, :, 1], "b": image_chunk[:, :, :, 2]}
         val_images_tiledb[tpl[0]:tpl[1]] = view
